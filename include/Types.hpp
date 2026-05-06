@@ -57,4 +57,6 @@ typedef const LPWCHAR LPCWCHAR;
 
 #define TRUE BOOL(1)
 #define FALSE BOOL(0)
+#define NULL 0
+
 #endif
