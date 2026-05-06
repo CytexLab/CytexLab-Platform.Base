@@ -22,12 +22,12 @@ NC='\033[0m' # No Color
 project_name="CytexLab.Kernel.Base"
 total_operations=3
 
-mkdir -p build
-mkdir -p lib
-
 # Инициализация переменных
 build_type=""
+build_cache_dir=""
+output_dir=""
 hide=0
+declare -A dependences
 
 # Разбор аргументов командной строки
 while [ $# -gt 0 ]; do
@@ -40,6 +40,18 @@ while [ $# -gt 0 ]; do
             hide=1
             shift
             ;;
+		--build-cache|-bh)
+			build_cache_dir="$2"
+			shift 2
+			;;
+		--output-dir|-od)
+			output_dir="$2"
+			shift 2
+			;;
+		--dependence|-d)
+			dependences["$2"]="$3"
+			shift 3
+			;;
         *)
             shift
             ;;
@@ -58,7 +70,31 @@ fi
 if [ -z "$build_type" ]; then
     echo "Введите тип сборки:"
     read build_type
+	echo ""
 fi
+
+check_depen() {
+	if [ -z "${dependences["$1"]}" ]; then
+		if [ -d "./deps/$1" ]; then
+			dependences["$1"]="./deps/$1"
+		else
+			echo -e "${RED}${BOLD}[ERROR]${NC} Не найдена зависимость $1"
+			echo -e "${BLUE}${BOLD}[INFO]${NC} Укажите путь до корня пакета через параметр -d/--dependence"
+			echo -e "${BLUE}${BOLD}[INFO]${NC} Поместите весь проект в папку deps/$1"
+			exit 1
+		fi
+	fi 
+}
+
+if [ -z "$build_cache_dir" ]; then
+	build_cache_dir="build"
+fi
+if [ -z "$output_dir" ]; then
+	output_dir="lib"
+fi
+
+mkdir -p "$build_cache_dir"
+mkdir -p "$output_dir"
 
 # Проверка и установка типа сборки
 if [ "$build_type" != "Debug" ] && [ "$build_type" != "Release" ]; then
@@ -67,8 +103,8 @@ if [ "$build_type" != "Debug" ] && [ "$build_type" != "Release" ]; then
     build_type="Debug"
 fi
 
-mkdir -p "build/$build_type"
-mkdir -p "lib/$build_type"
+mkdir -p "$build_cache_dir/$build_type"
+mkdir -p "$output_dir/$build_type"
 
 compile_flags="-I ./include -nostdlib -ffreestanding -fno-rtti -fno-exceptions -fno-stack-protector"
 
@@ -86,15 +122,15 @@ log() {
 
 compile() {
 	log $2 $total_operations $1
-	if ! clang++ -c "./src/$1" -o "./build/$build_type/$1.o" $compile_flags 2>&1; then
+	if ! clang++ -c "./src/$1" -o "$build_cache_dir/$build_type/$project_name/$1.o" $compile_flags 2>&1; then
 		echo -e "${RED}${BOLD}[ERROR]${NC} Ошибка компиляции $1"
 		exit 1
 	fi
 }
 
 archive() {
-	log $2 $total_operations "Archiving..."
-	local obj_files=$(find "./build/$build_type" -name "*.o" )
+	log $2 $total_operations "Archiving $project_name..."
+	local obj_files=$(find "$build_cache_dir/$build_type/$project_name" -name "*.o" )
 	if ! llvm-ar rcs $1 $obj_files 2>&1; then
 		echo -e "${RED}${BOLD}[ERROR]${NC} Ошибка архивирования"
 		exit 1
@@ -107,7 +143,7 @@ compile "lib.cpp" 1
 
 compile "placeholders.cpp" 2
 
-archive "./lib/$build_type/$build_type.$project_name.a" 3
+archive "$output_dir/$build_type/$build_type.$project_name.a" 3
 
 # Если не указан флаг --hide, ждём нажатия Enter
 if [ "$hide" -eq 0 ]; then
