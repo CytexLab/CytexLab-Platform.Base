@@ -106,6 +106,9 @@ fi
 mkdir -p "$build_cache_dir/$build_type"
 mkdir -p "$output_dir/$build_type"
 
+mkdir -p "$build_cache_dir/$build_type/$project_name"
+mkdir -p "$output_dir/$build_type/$project_name"
+
 compile_flags="-I ./include -nostdlib -ffreestanding -fno-rtti -fno-exceptions -fno-stack-protector"
 
 if [ "$build_type" = "Debug" ]; then
